@@ -21,7 +21,6 @@ class Pumpcontrol2 extends utils.Adapter {
         // this.on("objectChange", this.onObjectChange.bind(this));
         // this.on("message", this.onMessage.bind(this));
         this.on("unload", this.onUnload.bind(this));
-        this.log.info("Hello Pump Controller");
     }
 
     /**
@@ -32,53 +31,20 @@ class Pumpcontrol2 extends utils.Adapter {
 
         // The adapters config (in the instance object everything under the attribute "native") is accessible via
         // this.config:
-        this.log.info("config option1: " + this.config.option1);
-        this.log.info("config option2: " + this.config.option2);
+        
+        this.log.info("Hello Pump Controller 5");
+        this.log.info("pressure: " + this.config.pressureObject);
+        this.log.info("IN GPIO : " + this.config.inGpioObject);
+        this.log.info("OUT GPIO : " + this.config.outGpioObject);
 
-        /*
-        For every state in the system there has to be also an object of type state
-        Here a simple template for a boolean variable named "testVariable"
-        Because every adapter instance uses its own unique namespace variable names can't collide with other adapters variables
-        */
-        await this.setObjectNotExistsAsync("testVariable", {
-            type: "state",
-            common: {
-                name: "testVariable",
-                type: "boolean",
-                role: "indicator",
-                read: true,
-                write: true,
-            },
-            native: {},
-        });
+        // modbus.0.holdingRegisters.17666_p1
+        this.subscribeForeignStates(this.config.pressureObject);
 
-        // In order to get state updates, you need to subscribe to them. The following line adds a subscription for our variable we have created above.
-        this.subscribeStates("testVariable");
-        // You can also add a subscription for multiple states. The following line watches all states starting with "lights."
-        // this.subscribeStates("lights.*");
-        // Or, if you really must, you can also watch all states. Don't do this if you don't need to. Otherwise this will cause a lot of unnecessary load on the system:
-        // this.subscribeStates("*");
+        // rpi2.0.gpio.4.state
+        this.subscribeForeignStates(this.config.inGpioObject);
 
-        /*
-            setState examples
-            you will notice that each setState will cause the stateChange event to fire (because of above subscribeStates cmd)
-        */
-        // the variable testVariable is set to true as command (ack=false)
-        await this.setStateAsync("testVariable", true);
+        // GPIO OUT rpi2.0.gpio.17.state
 
-        // same thing, but the value is flagged "ack"
-        // ack should be always set to true if the value is received from or acknowledged from the target system
-        await this.setStateAsync("testVariable", { val: true, ack: true });
-
-        // same thing, but the state is deleted after 30s (getState will return null afterwards)
-        await this.setStateAsync("testVariable", { val: true, ack: true, expire: 30 });
-
-        // examples for the checkPassword/checkGroup functions
-        let result = await this.checkPasswordAsync("admin", "iobroker");
-        this.log.info("check user admin pw iobroker: " + result);
-
-        result = await this.checkGroupAsync("admin", "admin");
-        this.log.info("check group user admin group admin: " + result);
     }
 
     /**

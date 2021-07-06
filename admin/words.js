@@ -14,28 +14,18 @@ systemDictionary = {
         "pl": "Ustawienia adaptera dla pumpcontrol2",
         "zh-cn": "pumpcontrol2的适配器设置"
     },
-    "option1": {
-        "en": "option1",
-        "de": "Option 1",
-        "ru": "Опция 1",
-        "pt": "Opção 1",
-        "nl": "Optie 1",
-        "fr": "Option 1",
-        "it": "opzione 1",
-        "es": "Opción 1",
-        "pl": "opcja 1",
-        "zh-cn": "选项1"
+    "pressure": {
+        "en": "pressure object",
+        "de": "Druck Objekt"
     },
-    "option2": {
-        "en": "option2",
-        "de": "Option 2",
-        "ru": "option2",
-        "pt": "opção 2",
-        "nl": "Optie 2",
-        "fr": "Option 2",
-        "it": "opzione 2",
-        "es": "opcion 2",
-        "pl": "Opcja 2",
-        "zh-cn": "选项2"
-    }
+
+    "ingpio": {
+        "en": "Input GPIO - Pump ON",
+        "de": "Input GPIO - Pumpe AN"
+    },
+    
+    "outgpio": {
+        "en": "Output GPIO - Pump OFF",
+        "de": "Output GPIO - Pumpe AUS"
+    },
 };
