@@ -2,6 +2,7 @@
     "common": {
         "name": "pumpcontrol2",
         "version": "0.0.1",
+        "main": "build/main.js",
         "news": {
             "0.0.1": {
                 "en": "initial release",
