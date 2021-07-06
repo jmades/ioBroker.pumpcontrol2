@@ -1,0 +1,39 @@
+{
+    "cli": true,
+    "adapterName": "pumpcontrol2",
+    "title": "PumpControl2",
+    "description": "pump controlled by pressure drop",
+    "keywords": [
+        "pump",
+        "pressure"
+    ],
+    "expert": "yes",
+    "features": [
+        "adapter"
+    ],
+    "adminFeatures": [],
+    "type": "garden",
+    "startMode": "daemon",
+    "connectionType": "local",
+    "dataSource": "poll",
+    "connectionIndicator": "no",
+    "language": "TypeScript",
+    "adminReact": "no",
+    "tools": [
+        "ESLint"
+    ],
+    "releaseScript": "no",
+    "devServer": "no",
+    "indentation": "Space (4)",
+    "quotes": "double",
+    "es6class": "yes",
+    "authorName": "Jochen",
+    "authorGithub": "jmades",
+    "authorEmail": "jochen@mades.net",
+    "gitRemoteProtocol": "HTTPS",
+    "gitCommit": "no",
+    "license": "MIT License",
+    "ci": "gh-actions",
+    "dependabot": "no",
+    "creatorVersion": "1.34.0"
+}

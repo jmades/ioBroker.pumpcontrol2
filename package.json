@@ -1,0 +1,67 @@
+{
+  "name": "iobroker.pumpcontrol2",
+  "version": "0.0.1",
+  "description": "pump controlled by pressure drop",
+  "author": {
+    "name": "Jochen",
+    "email": "jochen@mades.net"
+  },
+  "homepage": "https://github.com/jmades/ioBroker.pumpcontrol2",
+  "license": "MIT",
+  "keywords": [
+    "pump",
+    "pressure"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmades/ioBroker.pumpcontrol2"
+  },
+  "dependencies": {
+    "@iobroker/adapter-core": "^2.5.0"
+  },
+  "devDependencies": {
+    "@iobroker/testing": "^2.4.4",
+    "@types/chai": "^4.2.19",
+    "@types/chai-as-promised": "^7.1.4",
+    "@types/gulp": "^4.0.8",
+    "@types/mocha": "^8.2.2",
+    "@types/node": "^14.17.4",
+    "@types/proxyquire": "^1.3.28",
+    "@types/sinon": "^10.0.2",
+    "@types/sinon-chai": "^3.2.5",
+    "@typescript-eslint/eslint-plugin": "^4.28.2",
+    "@typescript-eslint/parser": "^4.28.2",
+    "axios": "^0.21.1",
+    "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
+    "eslint": "^7.30.0",
+    "gulp": "^4.0.2",
+    "mocha": "^9.0.2",
+    "proxyquire": "^2.1.3",
+    "rimraf": "^3.0.2",
+    "sinon": "^11.1.1",
+    "sinon-chai": "^3.7.0",
+    "source-map-support": "^0.5.19",
+    "ts-node": "^10.0.0",
+    "typescript": "^4.3.5"
+  },
+  "main": "build/main.js",
+  "scripts": {
+    "prebuild": "rimraf ./build",
+    "build:ts": "tsc -p tsconfig.build.json",
+    "build": "npm run build:ts",
+    "watch:ts": "tsc -p tsconfig.build.json --watch",
+    "watch": "npm run watch:ts",
+    "test:ts": "mocha --config test/mocharc.custom.json src/**/*.test.ts",
+    "test:package": "mocha test/package --exit",
+    "test:unit": "mocha test/unit --exit",
+    "test:integration": "mocha test/integration --exit",
+    "test": "npm run test:ts && npm run test:package",
+    "check": "tsc --noEmit",
+    "lint": "eslint --ext .ts src/"
+  },
+  "bugs": {
+    "url": "https://github.com/jmades/ioBroker.pumpcontrol2/issues"
+  },
+  "readmeFilename": "README.md"
+}

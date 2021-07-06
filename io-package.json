@@ -1,0 +1,75 @@
+{
+    "common": {
+        "name": "pumpcontrol2",
+        "version": "0.0.1",
+        "news": {
+            "0.0.1": {
+                "en": "initial release",
+                "de": "Erstveröffentlichung",
+                "ru": "Начальная версия",
+                "pt": "lançamento inicial",
+                "nl": "Eerste uitgave",
+                "fr": "Première version",
+                "it": "Versione iniziale",
+                "es": "Versión inicial",
+                "pl": "Pierwsze wydanie",
+                "zh-cn": "首次出版"
+            }
+        },
+        "titleLang": {
+            "en": "PumpControl2",
+            "de": "Pumpensteuerung2",
+            "ru": "PumpControl2",
+            "pt": "PumpControl2",
+            "nl": "PumpControl2",
+            "fr": "PumpControl2",
+            "it": "PumpControl2",
+            "es": "PumpControl2",
+            "pl": "Sterowanie pompą2",
+            "zh-cn": "泵控制2"
+        },
+        "desc": {
+            "en": "pump controlled by pressure drop",
+            "de": "druckabfallgesteuerte Pumpe",
+            "ru": "насос, управляемый перепадом давления",
+            "pt": "bomba controlada por queda de pressão",
+            "nl": "pomp geregeld door drukval",
+            "fr": "pompe commandée par chute de pression",
+            "it": "pompa controllata da caduta di pressione",
+            "es": "bomba controlada por caída de presión",
+            "pl": "pompa sterowana spadkiem ciśnienia",
+            "zh-cn": "由压降控制的泵"
+        },
+        "authors": [
+            "Jochen <jochen@mades.net>"
+        ],
+        "keywords": [
+            "pump",
+            "pressure"
+        ],
+        "license": "MIT",
+        "platform": "Javascript/Node.js",
+        "icon": "pumpcontrol2.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/jmades/ioBroker.pumpcontrol2/master/admin/pumpcontrol2.png",
+        "readme": "https://github.com/jmades/ioBroker.pumpcontrol2/blob/master/README.md",
+        "loglevel": "info",
+        "mode": "daemon",
+        "type": "garden",
+        "compact": true,
+        "connectionType": "local",
+        "dataSource": "poll",
+        "materialize": true,
+        "dependencies": [
+            {
+                "js-controller": ">=2.0.0"
+            }
+        ]
+    },
+    "native": {
+        "option1": true,
+        "option2": "42"
+    },
+    "objects": [],
+    "instanceObjects": []
+}
