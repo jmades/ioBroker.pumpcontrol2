@@ -29,25 +29,28 @@ class Pumpcontrol2 extends utils.Adapter {
         this.log.info("Let's control the pump");
 
         const pressurePromise = await this.getForeignStatesAsync(this.config.pressureObject);
-        const pumpOnPromise = await this.getForeignStatesAsync(this.config.inGpioObject);
+        const pumpOnPromise = await this.getForeignStatesAsync(this.config.inGpioPumpOnObject);
+        const pumpAutoPromise = await this.getForeignStatesAsync(this.config.inGpioPumpAutoObject);
 
-        if(pressurePromise && pumpOnPromise)
+        if(pressurePromise && pumpOnPromise && pumpAutoPromise)
         {
             const pressure = pressurePromise[this.config.pressureObject].val as number;
-            const pumpOn   = pumpOnPromise[this.config.inGpioObject].val as boolean;
+            const pumpOn   = pumpOnPromise[this.config.inGpioPumpOnObject].val as boolean;
+            const pumpAuto = pumpAutoPromise[this.config.inGpioPumpAutoObject].val as boolean;
 
             this.log.info("pressure = "+pressure);
             this.log.info("pumpOn   = "+pumpOn);
+            this.log.info("pumpAuto = "+pumpAuto);
 
             if(pumpOn)
             {
                 this.log.info("Switch Pump ON");
-                this.setForeignStateAsync(this.config.outGpioObject, true);
+                this.setForeignStateAsync(this.config.outGpioPumpOnObject, true);
             }
             else
             {
                 this.log.info("Switch Pump OFF");
-                this.setForeignStateAsync(this.config.outGpioObject, false);
+                this.setForeignStateAsync(this.config.outGpioPumpOnObject, false);
             }
         }
         else
@@ -69,14 +72,15 @@ class Pumpcontrol2 extends utils.Adapter {
 
         this.log.info("Hello Pump Controller 6");
         this.log.info("pressure: " + this.config.pressureObject);
-        this.log.info("IN GPIO : " + this.config.inGpioObject);
-        this.log.info("OUT GPIO : " + this.config.outGpioObject);
+        this.log.info("IN GPIO ON: " + this.config.inGpioPumpOnObject);
+        this.log.info("IN GPIO AUTO: " + this.config.inGpioPumpAutoObject);
+        this.log.info("OUT GPIO : " + this.config.outGpioPumpOnObject);
 
         // modbus.0.holdingRegisters.17666_p1
         this.subscribeForeignStates(this.config.pressureObject);
 
         // rpi2.0.gpio.4.state
-        this.subscribeForeignStates(this.config.inGpioObject);
+        this.subscribeForeignStates(this.config.inGpioPumpOnObject);
 
         // GPIO OUT rpi2.0.gpio.17.state
 

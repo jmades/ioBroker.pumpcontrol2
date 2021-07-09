@@ -5,8 +5,9 @@ declare global {
     namespace ioBroker {
         interface AdapterConfig {
             pressureObject: string;
-            inGpioObject: string;
-            outGpioObject: string;
+            inGpioPumpOnObject: string;
+            inGpioPumpAutoObject: string;
+            outGpioPumpOnObject: string;
         }
     }
 }

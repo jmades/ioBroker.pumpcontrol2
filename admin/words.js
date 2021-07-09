@@ -19,11 +19,16 @@ systemDictionary = {
         "de": "Druck Objekt"
     },
 
-    "ingpio": {
+    "ingpiopumpon": {
         "en": "Input GPIO - Pump ON",
         "de": "Input GPIO - Pumpe AN"
     },
     
+    "ingpiopumpauto": {
+        "en": "Input GPIO - Pump AUTO",
+        "de": "Input GPIO - Pumpe AUTO"
+    },
+
     "outgpio": {
         "en": "Output GPIO - Pump OFF",
         "de": "Output GPIO - Pumpe AUS"
