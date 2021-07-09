@@ -33,4 +33,9 @@ systemDictionary = {
         "en": "Output GPIO - Pump OFF",
         "de": "Output GPIO - Pumpe AUS"
     },
+
+    "pressureThreshold": {
+        "en": "Pressure threshold to start pump",
+        "de": "Druck-Schwellwert zum Starten der Pumpe"
+    },
 };
