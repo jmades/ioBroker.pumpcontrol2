@@ -5,8 +5,6 @@
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 import * as utils from "@iobroker/adapter-core";
-import { timeStamp } from "console";
-// import "iobroker";
 
 enum switchState {
     OFF,
@@ -14,6 +12,11 @@ enum switchState {
     FORCEDON
 }
 
+enum autoState {
+    AUTO_OFF,
+    AUTO_RUN,
+    AUTO_OVERTIME
+}
 // Load your modules here, e.g.:
 // import * as fs from "fs";
 
@@ -22,6 +25,9 @@ class Pumpcontrol2 extends utils.Adapter {
 
     private processTime = -1;
     private state = switchState.OFF;
+    private autoState = autoState.AUTO_OFF;
+    private runtime = 0 as number;
+    private startTime = 0 as number;
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
         super({
@@ -39,6 +45,7 @@ class Pumpcontrol2 extends utils.Adapter {
     {
         this.log.info("Let's control the pump");
 
+        /*
         const actTime = new Date().getTime();
         if(this.processTime>0)
         {
@@ -46,6 +53,7 @@ class Pumpcontrol2 extends utils.Adapter {
         }
 
         this.processTime = actTime;
+        */
 
         const pressurePromise = await this.getForeignStatesAsync(this.config.pressureObject);
         const pumpOnPromise = await this.getForeignStatesAsync(this.config.inGpioPumpOnObject);
@@ -53,15 +61,44 @@ class Pumpcontrol2 extends utils.Adapter {
 
         if(pressurePromise && pumpOnPromise && pumpAutoPromise)
         {
-            const pressure = pressurePromise[this.config.pressureObject].val as number;
+            // const pressure = pressurePromise[this.config.pressureObject].val as number;
             const switchOn   = pumpOnPromise[this.config.inGpioPumpOnObject].val as boolean;
             const switchAuto = pumpAutoPromise[this.config.inGpioPumpAutoObject].val as boolean;
 
+            /*
             this.log.info("pressure = "+pressure);
             this.log.info("switchOn  = "+switchOn);
             this.log.info("switchAuto = "+switchAuto);
+            */
 
-            this.stateMachine(pressure,switchOn,switchAuto);
+            // Call the Main Statemachine
+            const nextState = this.stateMachine(switchOn,switchAuto);
+            this.log.info("Next main state = "+nextState);
+
+            // Initial actions
+            if(this.state != nextState)
+            {
+                await this.initializeNewState(this.state, nextState);
+            }
+            else
+            {
+                this.doStateAction(this.state);
+            }
+
+            /*
+                // Call the AUTO state machine
+                if(this.state == switchState.AUTO)
+                {
+                    const nextAutoState = this.autoStateMachine(pressure);
+
+                    this.autoState = nextAutoState;
+                    this.setState("autoState",this.autoState);
+                }
+            */
+
+            // Update States
+            this.state = nextState;
+            this.setState("mainState",this.state);
             /*
             if(pumpOn)
             {
@@ -83,9 +120,9 @@ class Pumpcontrol2 extends utils.Adapter {
 
     }
 
-    private stateMachine(pressure : number, swOn : boolean, swAuto : boolean) : void
+    private stateMachine( swOn : boolean, swAuto : boolean) : switchState
     {
-        this.log.info("Calculate new states"+pressure+" - "+swOn+" - "+swAuto);
+        this.log.info("Calculate new states "+swOn+" - "+swAuto);
 
         let newState = this.state;
 
@@ -131,12 +168,107 @@ class Pumpcontrol2 extends utils.Adapter {
             }
         }
 
-        this.log.info("New state = "+newState);
-        this.state = newState;
-        this.setState("mainState",this.state);
+
+
+        return newState;
 
     }
 
+    private autoStateMachine( pressure : number) : autoState
+    {
+        this.log.info("autoStateMachine "+pressure);
+
+        let newState = this.autoState;
+
+        if(pressure<this.config.pressureThreshold)
+        {
+            newState = autoState.AUTO_RUN;
+        }
+        else
+        {
+            newState = autoState.AUTO_OFF;
+        }
+
+        return newState;
+    }
+
+    private async initializeNewState( actual : switchState, next : switchState) : Promise<void>
+    {
+        this.log.info("initializeNewState "+ actual+ " --> "+next);
+
+        switch(actual)
+        {
+            case switchState.OFF:
+            {
+                switch(next)
+                {
+                    case switchState.FORCEDON:
+                    {
+                        this.log.info("From OFF to FORCEDON --> switch pump ON ");
+                        this.runtime = 0;
+                        this.startTime = new Date().getTime();
+                        // Switch Pump ON
+                        await this.setForeignStateAsync(this.config.outGpioPumpOnObject, true);
+                        break;
+                    }
+                    case switchState.AUTO:
+                    {
+                        // Do nothing??
+                    }
+                }
+                break;
+            }
+
+            case switchState.FORCEDON:
+            {
+                switch(next)
+                {
+                    case switchState.OFF:
+                    {
+                        this.log.info("From FORCEDON to OFF --> switch pump OFF ");
+
+                        const opHours =  await this.getStateAsync("pumpOperatinghours");
+
+                        if(opHours)
+                        {
+                            opHours.val = opHours.val as number + this.runtime;
+
+                            this.log.info("Setting ophours to "+opHours.val);
+                            this.setState("pumpOperatinghours", opHours.val);
+
+                        }
+
+                        this.startTime = 0;
+
+                        // switch Pump Off
+                        await this.setForeignStateAsync(this.config.outGpioPumpOnObject, false);
+                        break;
+                    }
+                    case switchState.AUTO:
+                    {
+                        // Do nothing??
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    private doStateAction(actual : switchState) : void
+    {
+        this.log.info("do state action "+ actual);
+
+        switch(actual)
+        {
+            case switchState.FORCEDON:
+            {
+                // Update runtimes
+                this.runtime = new Date().getTime() - this.startTime;
+                this.log.info("Runtime = "+this.runtime);
+                break;
+            }
+        }
+    }
     /**
      * Is called when databases are connected and adapter received configuration.
      */
@@ -189,6 +321,9 @@ class Pumpcontrol2 extends utils.Adapter {
             },
             native: {},
         });
+
+        // TODO load the old value
+        this.setState("pumpOperatinghours", 0);
 
         // be sensitve to pressure
         if(this.config.pressureObject) this.subscribeForeignStates(this.config.pressureObject);
@@ -246,6 +381,7 @@ class Pumpcontrol2 extends utils.Adapter {
         }
     }
 
+    /*
     private async Beispiel()
     {
         this.log.info("Let's control the pump");
@@ -260,7 +396,7 @@ class Pumpcontrol2 extends utils.Adapter {
              {
                 this.log.info(key);
                 this.log.info(JSON.stringify(value));
-                
+
                 this.log.info("Wert"+value.val);
 
                 if(value.val)
@@ -269,11 +405,13 @@ class Pumpcontrol2 extends utils.Adapter {
                     this.log.info("Wert 2"+pressure);
                 }
              }
-             
+
          }
 
         // this.log.info("pressure = "+pressure);
     }
+    */
+
     // If you need to accept messages in your adapter, uncomment the following block and the corresponding line in the constructor.
     // /**
     //  * Some message was sent to this instance over message box. Used by email, pushover, text2speech, ...
