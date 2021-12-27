@@ -9,6 +9,7 @@ declare global {
             inGpioPumpAutoObject: string;
             outGpioPumpOnObject: string;
             pressureThreshold: number;
+            maxRuntime: number;
         }
     }
 }

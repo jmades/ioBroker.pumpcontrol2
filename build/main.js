@@ -60,11 +60,13 @@ class Pumpcontrol2 extends utils.Adapter {
             const pressure = pressurePromise[this.config.pressureObject].val;
             const switchOn = pumpOnPromise[this.config.inGpioPumpOnObject].val;
             const switchAuto = pumpAutoPromise[this.config.inGpioPumpAutoObject].val;
-            this.log.info("################# pressure = " + pressure);
-            this.log.info("################# switchOn  = " + switchOn);
-            this.log.info("################# switchAuto = " + switchAuto);
+            /*
+            this.log.info("################# pressure = "+pressure);
+            this.log.info("################# switchOn  = "+switchOn);
+            this.log.info("################# switchAuto = "+switchAuto);
+            */
             // Call the Main Statemachine
-            const nextState = this.stateMachine(switchOn, switchAuto, pressure, this.config.pressureThreshold, this.runtime, 50000);
+            const nextState = this.stateMachine(switchOn, switchAuto, pressure, this.config.pressureThreshold, this.runtime, this.config.maxRuntime);
             this.log.info("Next main state = " + nextState);
             // Initial actions
             if (this.state != nextState) {
@@ -217,12 +219,13 @@ class Pumpcontrol2 extends utils.Adapter {
         // Initialize your adapter here
         // The adapters config (in the instance object everything under the attribute "native") is accessible via
         // this.config:
-        this.log.info("Hello Pump Controller 6");
+        this.log.info("Hello Pump Controller");
         this.log.info("pressure: " + this.config.pressureObject);
         this.log.info("IN GPIO ON: " + this.config.inGpioPumpOnObject);
         this.log.info("IN GPIO AUTO: " + this.config.inGpioPumpAutoObject);
         this.log.info("OUT GPIO : " + this.config.outGpioPumpOnObject);
-        this.log.info("Threshold : " + this.config.pressureThreshold);
+        this.log.info("Pressure Threshold : " + this.config.pressureThreshold);
+        this.log.info("Max Runtime : " + this.config.maxRuntime);
         // My Objects
         await this.setObjectAsync("pumpOperatinghours", {
             type: "state",

@@ -38,4 +38,9 @@ systemDictionary = {
         "en": "Pressure threshold to start pump",
         "de": "Druck-Schwellwert zum Starten der Pumpe"
     },
+
+    "maxRuntime": {
+        "en": "Maximum runtime of pump",
+        "de": "Maximale Laufzeit der Pumpe"
+    },
 };
