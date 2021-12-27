@@ -43,7 +43,7 @@ class Pumpcontrol2 extends utils.Adapter {
 
     private async controlPump() : Promise<void>
     {
-        this.log.info("Let's control the pump");
+        this.log.info("Let's control the pump, moi Liewer");
 
         /*
         const actTime = new Date().getTime();
@@ -61,15 +61,15 @@ class Pumpcontrol2 extends utils.Adapter {
 
         if(pressurePromise && pumpOnPromise && pumpAutoPromise)
         {
-            // const pressure = pressurePromise[this.config.pressureObject].val as number;
+            const pressure = pressurePromise[this.config.pressureObject].val as number;
             const switchOn   = pumpOnPromise[this.config.inGpioPumpOnObject].val as boolean;
             const switchAuto = pumpAutoPromise[this.config.inGpioPumpAutoObject].val as boolean;
 
-            /*
-            this.log.info("pressure = "+pressure);
-            this.log.info("switchOn  = "+switchOn);
-            this.log.info("switchAuto = "+switchAuto);
-            */
+
+            this.log.info("################# pressure = "+pressure);
+            this.log.info("################# switchOn  = "+switchOn);
+            this.log.info("################# switchAuto = "+switchAuto);
+
 
             // Call the Main Statemachine
             const nextState = this.stateMachine(switchOn,switchAuto);

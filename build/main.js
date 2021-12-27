@@ -25,7 +25,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 const utils = __importStar(require("@iobroker/adapter-core"));
-// import "iobroker";
+var switchState;
+(function (switchState) {
+    switchState[switchState["OFF"] = 0] = "OFF";
+    switchState[switchState["AUTO"] = 1] = "AUTO";
+    switchState[switchState["FORCEDON"] = 2] = "FORCEDON";
+})(switchState || (switchState = {}));
+var autoState;
+(function (autoState) {
+    autoState[autoState["AUTO_OFF"] = 0] = "AUTO_OFF";
+    autoState[autoState["AUTO_RUN"] = 1] = "AUTO_RUN";
+    autoState[autoState["AUTO_OVERTIME"] = 2] = "AUTO_OVERTIME";
+})(autoState || (autoState = {}));
 // Load your modules here, e.g.:
 // import * as fs from "fs";
 class Pumpcontrol2 extends utils.Adapter {
@@ -34,6 +45,11 @@ class Pumpcontrol2 extends utils.Adapter {
             ...options,
             name: "pumpcontrol2",
         });
+        this.processTime = -1;
+        this.state = switchState.OFF;
+        this.autoState = autoState.AUTO_OFF;
+        this.runtime = 0;
+        this.startTime = 0;
         this.on("ready", this.onReady.bind(this));
         this.on("stateChange", this.onStateChange.bind(this));
         // this.on("objectChange", this.onObjectChange.bind(this));
@@ -41,18 +57,174 @@ class Pumpcontrol2 extends utils.Adapter {
         this.on("unload", this.onUnload.bind(this));
     }
     async controlPump() {
-        this.log.info("Let's control the pump");
-        this.getForeignStatesAsync(this.config.pressureObject).then((x) => {
-            this.log.info("Was ist das hier?");
-        });
-        const xxx = await this.getForeignStatesAsync(this.config.pressureObject);
-        if (xxx) {
-            for (const [key, value] of (Object.entries(xxx))) {
-                this.log.info(key);
-                this.log.info(JSON.stringify(value));
-            }
+        this.log.info("Let's control the pump, moi Liewer");
+        /*
+        const actTime = new Date().getTime();
+        if(this.processTime>0)
+        {
+            this.log.info("Time DIFF = "+(actTime - this.processTime));
         }
-        // this.log.info("pressure = "+pressure);
+
+        this.processTime = actTime;
+        */
+        const pressurePromise = await this.getForeignStatesAsync(this.config.pressureObject);
+        const pumpOnPromise = await this.getForeignStatesAsync(this.config.inGpioPumpOnObject);
+        const pumpAutoPromise = await this.getForeignStatesAsync(this.config.inGpioPumpAutoObject);
+        if (pressurePromise && pumpOnPromise && pumpAutoPromise) {
+            const pressure = pressurePromise[this.config.pressureObject].val;
+            const switchOn = pumpOnPromise[this.config.inGpioPumpOnObject].val;
+            const switchAuto = pumpAutoPromise[this.config.inGpioPumpAutoObject].val;
+            this.log.info("################# pressure = " + pressure);
+            this.log.info("################# switchOn  = " + switchOn);
+            this.log.info("################# switchAuto = " + switchAuto);
+            // Call the Main Statemachine
+            const nextState = this.stateMachine(switchOn, switchAuto);
+            this.log.info("Next main state = " + nextState);
+            // Initial actions
+            if (this.state != nextState) {
+                await this.initializeNewState(this.state, nextState);
+            }
+            else {
+                this.doStateAction(this.state);
+            }
+            /*
+                // Call the AUTO state machine
+                if(this.state == switchState.AUTO)
+                {
+                    const nextAutoState = this.autoStateMachine(pressure);
+
+                    this.autoState = nextAutoState;
+                    this.setState("autoState",this.autoState);
+                }
+            */
+            // Update States
+            this.state = nextState;
+            this.setState("mainState", this.state);
+            /*
+            if(pumpOn)
+            {
+                this.log.info("Switch Pump ON");
+                this.setForeignStateAsync(this.config.outGpioPumpOnObject, true);
+            }
+            else
+            {
+                this.log.info("Switch Pump OFF");
+                this.setForeignStateAsync(this.config.outGpioPumpOnObject, false);
+            }
+            */
+        }
+        else {
+            this.log.info("somethins is wrong - Undefined???");
+        }
+    }
+    stateMachine(swOn, swAuto) {
+        this.log.info("Calculate new states " + swOn + " - " + swAuto);
+        let newState = this.state;
+        // Conditions
+        switch (this.state) {
+            case switchState.OFF:
+                {
+                    if (swOn) {
+                        newState = switchState.FORCEDON;
+                    }
+                    else if (swAuto) {
+                        newState = switchState.AUTO;
+                    }
+                    break;
+                }
+            case switchState.FORCEDON:
+                {
+                    if (!swOn && swAuto) {
+                        newState = switchState.AUTO;
+                    }
+                    else if (!swOn && !swAuto) {
+                        newState = switchState.OFF;
+                    }
+                    break;
+                }
+            case switchState.AUTO:
+                {
+                    if (swOn) {
+                        newState = switchState.FORCEDON;
+                    }
+                    else if (!swOn && !swAuto) {
+                        newState = switchState.OFF;
+                    }
+                    break;
+                }
+        }
+        return newState;
+    }
+    autoStateMachine(pressure) {
+        this.log.info("autoStateMachine " + pressure);
+        let newState = this.autoState;
+        if (pressure < this.config.pressureThreshold) {
+            newState = autoState.AUTO_RUN;
+        }
+        else {
+            newState = autoState.AUTO_OFF;
+        }
+        return newState;
+    }
+    async initializeNewState(actual, next) {
+        this.log.info("initializeNewState " + actual + " --> " + next);
+        switch (actual) {
+            case switchState.OFF:
+                {
+                    switch (next) {
+                        case switchState.FORCEDON:
+                            {
+                                this.log.info("From OFF to FORCEDON --> switch pump ON ");
+                                this.runtime = 0;
+                                this.startTime = new Date().getTime();
+                                // Switch Pump ON
+                                await this.setForeignStateAsync(this.config.outGpioPumpOnObject, true);
+                                break;
+                            }
+                        case switchState.AUTO:
+                            {
+                                // Do nothing??
+                            }
+                    }
+                    break;
+                }
+            case switchState.FORCEDON:
+                {
+                    switch (next) {
+                        case switchState.OFF:
+                            {
+                                this.log.info("From FORCEDON to OFF --> switch pump OFF ");
+                                const opHours = await this.getStateAsync("pumpOperatinghours");
+                                if (opHours) {
+                                    opHours.val = opHours.val + this.runtime;
+                                    this.log.info("Setting ophours to " + opHours.val);
+                                    this.setState("pumpOperatinghours", opHours.val);
+                                }
+                                this.startTime = 0;
+                                // switch Pump Off
+                                await this.setForeignStateAsync(this.config.outGpioPumpOnObject, false);
+                                break;
+                            }
+                        case switchState.AUTO:
+                            {
+                                // Do nothing??
+                            }
+                    }
+                    break;
+                }
+        }
+    }
+    doStateAction(actual) {
+        this.log.info("do state action " + actual);
+        switch (actual) {
+            case switchState.FORCEDON:
+                {
+                    // Update runtimes
+                    this.runtime = new Date().getTime() - this.startTime;
+                    this.log.info("Runtime = " + this.runtime);
+                    break;
+                }
+        }
     }
     /**
      * Is called when databases are connected and adapter received configuration.
@@ -63,13 +235,54 @@ class Pumpcontrol2 extends utils.Adapter {
         // this.config:
         this.log.info("Hello Pump Controller 6");
         this.log.info("pressure: " + this.config.pressureObject);
-        this.log.info("IN GPIO : " + this.config.inGpioObject);
-        this.log.info("OUT GPIO : " + this.config.outGpioObject);
-        // modbus.0.holdingRegisters.17666_p1
-        this.subscribeForeignStates(this.config.pressureObject);
-        // rpi2.0.gpio.4.state
-        this.subscribeForeignStates(this.config.inGpioObject);
-        // GPIO OUT rpi2.0.gpio.17.state
+        this.log.info("IN GPIO ON: " + this.config.inGpioPumpOnObject);
+        this.log.info("IN GPIO AUTO: " + this.config.inGpioPumpAutoObject);
+        this.log.info("OUT GPIO : " + this.config.outGpioPumpOnObject);
+        this.log.info("Threshold : " + this.config.pressureThreshold);
+        // My Objects
+        await this.setObjectAsync("pumpOperatinghours", {
+            type: "state",
+            common: {
+                name: "pumpOperatinghours",
+                type: "number",
+                role: "value",
+                read: true,
+                write: true,
+            },
+            native: {},
+        });
+        await this.setObjectAsync("mainState", {
+            type: "state",
+            common: {
+                name: "mainState",
+                type: "string",
+                role: "value",
+                read: true,
+                write: true,
+            },
+            native: {},
+        });
+        await this.setObjectAsync("autoState", {
+            type: "state",
+            common: {
+                name: "autoState",
+                type: "string",
+                role: "value",
+                read: true,
+                write: true,
+            },
+            native: {},
+        });
+        // TODO load the old value
+        this.setState("pumpOperatinghours", 0);
+        // be sensitve to pressure
+        if (this.config.pressureObject)
+            this.subscribeForeignStates(this.config.pressureObject);
+        // be sensitive to GPIOs
+        if (this.config.inGpioPumpOnObject)
+            this.subscribeForeignStates(this.config.inGpioPumpOnObject);
+        if (this.config.inGpioPumpAutoObject)
+            this.subscribeForeignStates(this.config.inGpioPumpAutoObject);
     }
     /**
      * Is called when adapter shuts down - callback has to be called under any circumstances!
