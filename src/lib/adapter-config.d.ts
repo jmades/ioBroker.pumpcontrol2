@@ -10,6 +10,7 @@ declare global {
             outGpioPumpOnObject: string;
             pressureThreshold: number;
             maxRuntime: number;
+            delayTimeBetweenStarts : number;
         }
     }
 }

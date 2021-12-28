@@ -43,4 +43,9 @@ systemDictionary = {
         "en": "Maximum runtime of pump",
         "de": "Maximale Laufzeit der Pumpe"
     },
+
+    "delayTimeBetweenStarts": {
+        "en": "time between two pump starts (in AUTO mode)",
+        "de": "Zeit zwischen zwei Pumpenstarts (in AUTO mode)"
+    },
 };

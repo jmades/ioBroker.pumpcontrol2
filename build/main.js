@@ -30,8 +30,9 @@ var mainState;
     mainState[mainState["MAN_OFF"] = 0] = "MAN_OFF";
     mainState[mainState["MAN_ON"] = 1] = "MAN_ON";
     mainState[mainState["AUTO_OFF"] = 2] = "AUTO_OFF";
-    mainState[mainState["AUTO_ON"] = 3] = "AUTO_ON";
-    mainState[mainState["OVERTIME_OFF"] = 4] = "OVERTIME_OFF";
+    mainState[mainState["AUTO_OFF_WAIT"] = 3] = "AUTO_OFF_WAIT";
+    mainState[mainState["AUTO_ON"] = 4] = "AUTO_ON";
+    mainState[mainState["OVERTIME_OFF"] = 5] = "OVERTIME_OFF"; // 5
 })(mainState || (mainState = {}));
 // Load your modules here, e.g.:
 // import * as fs from "fs";
@@ -44,7 +45,9 @@ class Pumpcontrol2 extends utils.Adapter {
         this.processTime = -1;
         this.state = mainState.MAN_OFF;
         this.runtime = 0;
+        this.autoOffTime = 0;
         this.startTime = 0;
+        this.stopTime = 0;
         this.on("ready", this.onReady.bind(this));
         this.on("stateChange", this.onStateChange.bind(this));
         // this.on("objectChange", this.onObjectChange.bind(this));
@@ -52,7 +55,7 @@ class Pumpcontrol2 extends utils.Adapter {
         this.on("unload", this.onUnload.bind(this));
     }
     async controlPump() {
-        this.log.info("Let's control the pump, moi Liewer");
+        this.log.debug("Let's control the pump");
         const pressurePromise = await this.getForeignStatesAsync(this.config.pressureObject);
         const pumpOnPromise = await this.getForeignStatesAsync(this.config.inGpioPumpOnObject);
         const pumpAutoPromise = await this.getForeignStatesAsync(this.config.inGpioPumpAutoObject);
@@ -69,8 +72,8 @@ class Pumpcontrol2 extends utils.Adapter {
             this.log.debug("################# switchAuto = " + switchAuto);
             this.log.debug("################# remoteOn = " + remoteOn);
             // Call the Main Statemachine
-            const nextState = this.stateMachine(switchOn || remoteOn, switchAuto, pressure, this.config.pressureThreshold, this.runtime, this.config.maxRuntime);
-            this.log.info("Next main state = " + nextState);
+            const nextState = this.stateMachine(switchOn || remoteOn, switchAuto, pressure, this.config.pressureThreshold, this.runtime, this.config.maxRuntime, this.autoOffTime, this.config.delayTimeBetweenStarts);
+            this.log.info("Next main state = " + mainState[nextState]);
             // Initial actions
             if (this.state != nextState) {
                 await this.initializeNewState(this.state, nextState);
@@ -80,16 +83,21 @@ class Pumpcontrol2 extends utils.Adapter {
             }
             // Update States
             this.state = nextState;
-            this.setState("mainState", this.state);
+            this.setState("mainState", mainState[this.state]);
         }
         else {
             this.log.info("somethins is wrong - Undefined???");
         }
     }
-    stateMachine(manOn, swAuto, pressure, pressureThreshold, runtime, maxRuntime) {
-        this.log.info("Calculate new states swMan= " + manOn +
-            " - swAuto= " + swAuto + " - p= " + pressure + " - pTh= " + pressureThreshold +
-            "- rTime= " + runtime + " -state" + this.state);
+    stateMachine(manOn, swAuto, pressure, pressureThreshold, runtime, maxRuntime, autoOffTime, delayTimeBetweenStarts) {
+        this.log.info("Calculate new states..." + mainState[this.state]);
+        this.log.debug("##### manOn= " + manOn);
+        this.log.debug("##### swAuto= " + swAuto);
+        this.log.debug("##### pressure= " + pressure);
+        this.log.debug("##### pTh= " + pressureThreshold);
+        this.log.debug("##### runTime= " + runtime);
+        this.log.debug("##### autoOffTime= " + autoOffTime);
+        this.log.debug("##### delayTimeBetweenStarts= " + delayTimeBetweenStarts);
         let newState = this.state;
         // Conditions
         switch (this.state) {
@@ -141,7 +149,7 @@ class Pumpcontrol2 extends utils.Adapter {
                         newState = mainState.OVERTIME_OFF;
                     }
                     else if (pressure >= pressureThreshold) {
-                        newState = mainState.AUTO_OFF;
+                        newState = mainState.AUTO_OFF_WAIT;
                     }
                     break;
                 }
@@ -152,11 +160,23 @@ class Pumpcontrol2 extends utils.Adapter {
                     }
                     break;
                 }
+            case mainState.AUTO_OFF_WAIT:
+                {
+                    if (!manOn && !swAuto) {
+                        newState = mainState.MAN_OFF;
+                    }
+                    else if (swAuto) {
+                        if (autoOffTime > delayTimeBetweenStarts) {
+                            newState = mainState.AUTO_OFF;
+                        }
+                    }
+                    break;
+                }
         }
         return newState;
     }
     async initializeNewState(actual, next) {
-        this.log.info("initializeNewState " + actual + " --> " + next);
+        this.log.info("initializeNewState " + mainState[actual] + " --> " + mainState[next]);
         switch (actual) {
             case mainState.MAN_OFF:
             case mainState.AUTO_OFF:
@@ -165,7 +185,6 @@ class Pumpcontrol2 extends utils.Adapter {
                         case mainState.MAN_ON:
                         case mainState.AUTO_ON:
                             {
-                                this.log.info("From OFF to FORCEDON --> switch pump ON ");
                                 this.runtime = 0;
                                 this.startTime = new Date().getTime();
                                 // Switch Pump ON
@@ -181,11 +200,11 @@ class Pumpcontrol2 extends utils.Adapter {
                     switch (next) {
                         case mainState.OVERTIME_OFF:
                         case mainState.MAN_OFF:
-                        case mainState.AUTO_OFF:
+                        case mainState.AUTO_OFF_WAIT:
                             {
-                                this.log.info("From MAN_ON to MAN_/OVERTIME_OFF --> switch pump OFF ");
                                 this.updateOperatingHours();
                                 this.startTime = 0;
+                                this.stopTime = new Date().getTime();
                                 // switch Pump Off
                                 await this.setForeignStateAsync(this.config.outGpioPumpOnObject, false);
                                 break;
@@ -193,25 +212,43 @@ class Pumpcontrol2 extends utils.Adapter {
                     }
                     break;
                 }
+            case mainState.AUTO_OFF_WAIT:
+                {
+                    switch (next) {
+                        case mainState.OVERTIME_OFF:
+                        case mainState.MAN_OFF:
+                        case mainState.AUTO_OFF:
+                            {
+                                this.autoOffTime = 0;
+                            }
+                    }
+                }
         }
     }
     async updateOperatingHours() {
         const opHours = await this.getStateAsync("pumpOperatinghours");
         if (opHours) {
             opHours.val = opHours.val + this.runtime;
-            this.log.info("Setting ophours to " + opHours.val);
+            this.log.info("Updating operating hours to: " + opHours.val);
             this.setState("pumpOperatinghours", opHours.val);
         }
     }
     doStateAction(actual) {
-        this.log.info("do state action " + actual);
+        this.log.debug("Do state action for: " + mainState[actual]);
         switch (actual) {
             case mainState.AUTO_ON:
             case mainState.MAN_ON:
                 {
                     // Update runtimes
                     this.runtime = new Date().getTime() - this.startTime;
-                    this.log.info("Runtime = " + this.runtime);
+                    this.log.debug("######## Runtime = " + this.runtime);
+                    break;
+                }
+            case mainState.AUTO_OFF_WAIT:
+                {
+                    // Update runtimes
+                    this.autoOffTime = new Date().getTime() - this.stopTime;
+                    this.log.debug("######## autoOffTime = " + this.autoOffTime);
                     break;
                 }
         }
@@ -223,13 +260,14 @@ class Pumpcontrol2 extends utils.Adapter {
         // Initialize your adapter here
         // The adapters config (in the instance object everything under the attribute "native") is accessible via
         // this.config:
-        this.log.info("Hello Pump Controller");
+        this.log.info("----------- Pump Controller --------------------");
         this.log.info("pressure: " + this.config.pressureObject);
         this.log.info("IN GPIO ON: " + this.config.inGpioPumpOnObject);
         this.log.info("IN GPIO AUTO: " + this.config.inGpioPumpAutoObject);
         this.log.info("OUT GPIO : " + this.config.outGpioPumpOnObject);
         this.log.info("Pressure Threshold : " + this.config.pressureThreshold);
         this.log.info("Max Runtime : " + this.config.maxRuntime);
+        this.log.info("delayTimeBetweenStarts : " + this.config.delayTimeBetweenStarts);
         // My Objects
         await this.setObjectAsync("pumpOperatinghours", {
             type: "state",
@@ -246,7 +284,7 @@ class Pumpcontrol2 extends utils.Adapter {
             type: "state",
             common: {
                 name: "mainState",
-                type: "number",
+                type: "string",
                 role: "value",
                 read: true,
                 write: true,
@@ -314,7 +352,7 @@ class Pumpcontrol2 extends utils.Adapter {
     onStateChange(id, state) {
         if (state) {
             // The state was changed
-            this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
+            this.log.debug(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
             // this.controlPump(state.val);
             this.controlPump();
         }
