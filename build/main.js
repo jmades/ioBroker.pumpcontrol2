@@ -56,17 +56,20 @@ class Pumpcontrol2 extends utils.Adapter {
         const pressurePromise = await this.getForeignStatesAsync(this.config.pressureObject);
         const pumpOnPromise = await this.getForeignStatesAsync(this.config.inGpioPumpOnObject);
         const pumpAutoPromise = await this.getForeignStatesAsync(this.config.inGpioPumpAutoObject);
-        if (pressurePromise && pumpOnPromise && pumpAutoPromise) {
+        const remoteOnPromise = await this.getStatesAsync("remotePumpOn");
+        if (pressurePromise && pumpOnPromise && pumpAutoPromise && remoteOnPromise) {
             const pressure = pressurePromise[this.config.pressureObject].val;
             const switchOn = pumpOnPromise[this.config.inGpioPumpOnObject].val;
             const switchAuto = pumpAutoPromise[this.config.inGpioPumpAutoObject].val;
-            /*
-            this.log.info("################# pressure = "+pressure);
-            this.log.info("################# switchOn  = "+switchOn);
-            this.log.info("################# switchAuto = "+switchAuto);
-            */
+            const remoteOn = remoteOnPromise[this.name + "." + this.instance + ".remotePumpOn"].val;
+            //    this.log.debug(JSON.stringify(pressurePromise));
+            //    this.log.debug(JSON.stringify(remoteOnPromise));
+            this.log.debug("################# pressure = " + pressure);
+            this.log.debug("################# switchOn  = " + switchOn);
+            this.log.debug("################# switchAuto = " + switchAuto);
+            this.log.debug("################# remoteOn = " + remoteOn);
             // Call the Main Statemachine
-            const nextState = this.stateMachine(switchOn, switchAuto, pressure, this.config.pressureThreshold, this.runtime, this.config.maxRuntime);
+            const nextState = this.stateMachine(switchOn || remoteOn, switchAuto, pressure, this.config.pressureThreshold, this.runtime, this.config.maxRuntime);
             this.log.info("Next main state = " + nextState);
             // Initial actions
             if (this.state != nextState) {
@@ -83,15 +86,16 @@ class Pumpcontrol2 extends utils.Adapter {
             this.log.info("somethins is wrong - Undefined???");
         }
     }
-    stateMachine(swOn, swAuto, pressure, pressureThreshold, runtime, maxRuntime) {
-        this.log.info("Calculate new states swMan= " + swOn +
-            " - swAuto= " + swAuto + " - p= " + pressure + " - pTh= " + pressureThreshold + "- rTime= " + runtime + " -state" + this.state);
+    stateMachine(manOn, swAuto, pressure, pressureThreshold, runtime, maxRuntime) {
+        this.log.info("Calculate new states swMan= " + manOn +
+            " - swAuto= " + swAuto + " - p= " + pressure + " - pTh= " + pressureThreshold +
+            "- rTime= " + runtime + " -state" + this.state);
         let newState = this.state;
         // Conditions
         switch (this.state) {
             case mainState.MAN_OFF:
                 {
-                    if (swOn) {
+                    if (manOn) {
                         newState = mainState.MAN_ON;
                     }
                     else if (swAuto) {
@@ -101,10 +105,10 @@ class Pumpcontrol2 extends utils.Adapter {
                 }
             case mainState.MAN_ON:
                 {
-                    if (!swOn && swAuto) {
+                    if (!manOn && swAuto) {
                         newState = mainState.AUTO_OFF;
                     }
-                    else if (!swOn && !swAuto) {
+                    else if (!manOn && !swAuto) {
                         newState = mainState.MAN_OFF;
                     }
                     else if (runtime > maxRuntime) {
@@ -114,10 +118,10 @@ class Pumpcontrol2 extends utils.Adapter {
                 }
             case mainState.AUTO_OFF:
                 {
-                    if (swOn) {
+                    if (manOn) {
                         newState = mainState.MAN_ON;
                     }
-                    else if (!swOn && !swAuto) {
+                    else if (!manOn && !swAuto) {
                         newState = mainState.MAN_OFF;
                     }
                     else if (pressure < pressureThreshold) {
@@ -127,10 +131,10 @@ class Pumpcontrol2 extends utils.Adapter {
                 }
             case mainState.AUTO_ON:
                 {
-                    if (swOn) {
+                    if (manOn) {
                         newState = mainState.MAN_ON;
                     }
-                    else if (!swOn && !swAuto) {
+                    else if (!manOn && !swAuto) {
                         newState = mainState.MAN_OFF;
                     }
                     else if (runtime > maxRuntime) {
@@ -143,7 +147,7 @@ class Pumpcontrol2 extends utils.Adapter {
                 }
             case mainState.OVERTIME_OFF:
                 {
-                    if (!swOn && !swAuto) {
+                    if (!manOn && !swAuto) {
                         newState = mainState.MAN_OFF;
                     }
                     break;
@@ -249,8 +253,22 @@ class Pumpcontrol2 extends utils.Adapter {
             },
             native: {},
         });
+        await this.setObjectAsync("remotePumpOn", {
+            type: "state",
+            common: {
+                name: "remotePumpOn",
+                type: "boolean",
+                role: "value",
+                read: true,
+                write: true,
+                def: true,
+            },
+            native: {},
+        });
         // TODO load the old value
         this.setState("pumpOperatinghours", 0);
+        // be sensitive to remotePumpOn
+        this.subscribeStates(this.name + "." + this.instance + ".remotePumpOn");
         // be sensitve to pressure
         if (this.config.pressureObject)
             this.subscribeForeignStates(this.config.pressureObject);
