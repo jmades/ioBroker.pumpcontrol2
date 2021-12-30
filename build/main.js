@@ -269,7 +269,8 @@ class Pumpcontrol2 extends utils.Adapter {
         this.log.info("Max Runtime : " + this.config.maxRuntime);
         this.log.info("delayTimeBetweenStarts : " + this.config.delayTimeBetweenStarts);
         // My Objects
-        await this.setObjectAsync("pumpOperatinghours", {
+        // await this.setObjectAsync("pumpOperatinghours", {
+        await this.setObjectNotExistsAsync("pumpOperatinghours", {
             type: "state",
             common: {
                 name: "pumpOperatinghours",
@@ -277,6 +278,7 @@ class Pumpcontrol2 extends utils.Adapter {
                 role: "value",
                 read: true,
                 write: true,
+                def: 0
             },
             native: {},
         });
@@ -299,12 +301,18 @@ class Pumpcontrol2 extends utils.Adapter {
                 role: "value",
                 read: true,
                 write: true,
-                def: true,
+                def: false,
             },
             native: {},
         });
         // TODO load the old value
-        this.setState("pumpOperatinghours", 0);
+        // this.setState("pumpOperatinghours", 0);
+        const opH = await this.getStateAsync("pumpOperatinghours");
+        // this.log.debug(JSON.stringify(opH));
+        if (opH == null) {
+            this.log.debug("opH ís NULL");
+            this.setState("pumpOperatinghours", 0);
+        }
         // be sensitive to remotePumpOn
         this.subscribeStates(this.name + "." + this.instance + ".remotePumpOn");
         // be sensitve to pressure
